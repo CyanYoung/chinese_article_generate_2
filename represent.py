@@ -19,7 +19,7 @@ bos, eos = '<', '>'
 pad_ind, oov_ind = 0, 1
 
 path_word_vec = 'feat/word_vec.pkl'
-path_word_ind = 'model/word_ind.pkl'
+path_word_ind = 'feat/word_ind.pkl'
 path_embed = 'feat/embed.pkl'
 
 
@@ -56,7 +56,7 @@ def tran_dict(word_inds, off):
 
 def embed(sent_words, path_word_ind, path_word_vec, path_embed):
     model = Dictionary(sent_words)
-    model.filter_extremes(no_below=min_freq, no_above=0.5, keep_n=max_vocab)
+    model.filter_extremes(no_below=min_freq, no_above=1.0, keep_n=max_vocab)
     word_inds = model.token2id
     word_inds = tran_dict(word_inds, off=2)
     with open(path_word_ind, 'wb') as f:
@@ -87,17 +87,17 @@ def sent2ind(words, word_inds, seq_len, keep_oov):
         return seq[-seq_len:]
 
 
-def align(sents, path_sent):
+def align(sent_words, path_sent):
     with open(path_word_ind, 'rb') as f:
-        model = pk.load(f)
-    seqs = model.texts_to_sequences(sents)
+        word_inds = pk.load(f)
     align_seqs = list()
-    for seq in seqs:
-        while len(seq) > seq_len:
-            trunc_seq = seq[:seq_len]
+    for words in sent_words:
+        while len(words) > seq_len:
+            trunc_words = words[:seq_len]
+            trunc_seq = sent2ind(trunc_words, word_inds, seq_len, keep_oov=True)
             align_seqs.append(trunc_seq)
-            seq = seq[seq_len:]
-        pad_seq = pad_sequences([seq], maxlen=seq_len)[0].tolist()
+            words = words[seq_len:]
+        pad_seq = sent2ind(words, word_inds, seq_len, keep_oov=True)
         align_seqs.append(pad_seq)
     align_seqs = np.array(align_seqs)
     with open(path_sent, 'wb') as f:
@@ -107,13 +107,14 @@ def align(sents, path_sent):
 def vectorize(paths, mode, update):
     texts = flat_read(paths['data'], 'text')
     flag_texts = add_flag(texts)
+    flag_text_words = [list(text) for text in flag_texts]
     if mode == 'train':
         if update:
             word2vec(flag_texts, path_word_vec)
-        embed(flag_texts, path_word_ind, path_word_vec, path_embed)
-    sents, labels = shift(flag_texts)
-    align(sents, paths['sent'])
-    align(labels, paths['label'])
+        embed(flag_text_words, path_word_ind, path_word_vec, path_embed)
+    sent_words, label_words = shift(flag_text_words)
+    align(sent_words, paths['sent'])
+    align(label_words, paths['label'])
 
 
 if __name__ == '__main__':
