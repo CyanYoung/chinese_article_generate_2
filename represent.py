@@ -66,7 +66,7 @@ def embed(texts, path_word2ind, path_word_vec, path_embed):
         pk.dump(embed_mat, f)
 
 
-def align(sents, path_sent, extra):
+def align(sents, path_sent):
     with open(path_word2ind, 'rb') as f:
         model = pk.load(f)
     seqs = model.texts_to_sequences(sents)
@@ -78,8 +78,6 @@ def align(sents, path_sent, extra):
             seq = seq[seq_len:]
         pad_seq = pad_sequences([seq], maxlen=seq_len)[0].tolist()
         align_seqs.append(pad_seq)
-    if extra:
-        align_seqs = add_buf(align_seqs)
     align_seqs = np.array(align_seqs)
     with open(path_sent, 'wb') as f:
         pk.dump(align_seqs, f)
@@ -88,14 +86,13 @@ def align(sents, path_sent, extra):
 def vectorize(paths, mode, update):
     texts = flat_read(paths['data'], 'text')
     flag_texts = add_flag(texts)
-    if update:
-        word2vec(flag_texts, path_word_vec)
     if mode == 'train':
+        if update:
+            word2vec(flag_texts, path_word_vec)
         embed(flag_texts, path_word2ind, path_word_vec, path_embed)
     sents, labels = shift(flag_texts)
-    align(sents, paths['cnn_sent'], extra=True)
-    align(sents, paths['rnn_sent'], extra=False)
-    align(labels, paths['label'], extra=False)
+    align(sents, paths['sent'])
+    align(labels, paths['label'])
 
 
 if __name__ == '__main__':
@@ -104,10 +101,10 @@ if __name__ == '__main__':
     paths['sent'] = 'feat/sent_train.pkl'
     paths['label'] = 'feat/label_train.pkl'
     vectorize(paths, 'train', update=False)
-    paths['data'] = 'data/train.csv'
-    paths['sent'] = 'feat/sent_train.pkl'
-    paths['label'] = 'feat/label_train.pkl'
-    vectorize(paths, 'train', update=False)
+    paths['data'] = 'data/dev.csv'
+    paths['sent'] = 'feat/sent_dev.pkl'
+    paths['label'] = 'feat/label_dev.pkl'
+    vectorize(paths, 'dev', update=False)
     paths['data'] = 'data/test.csv'
     paths['sent'] = 'feat/sent_test.pkl'
     paths['label'] = 'feat/label_test.pkl'
