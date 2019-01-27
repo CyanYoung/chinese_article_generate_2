@@ -23,10 +23,9 @@ max_len = 100
 
 bos, eos = '<', '>'
 
-path_word2ind = 'model/word2ind.pkl'
-with open(path_word2ind, 'rb') as f:
-    word2ind = pk.load(f)
-word_inds = word2ind.word_index
+path_word_ind = 'feat/word2ind.pkl'
+with open(path_word_ind, 'rb') as f:
+    word_inds = pk.load(f)
 
 eos_ind = word_inds[eos]
 
