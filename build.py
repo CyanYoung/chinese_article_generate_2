@@ -127,13 +127,13 @@ def batch_dev(model, loss_func, loader):
     return total_loss / total_num, total_acc / total_num
 
 
-def fit(name, max_epoch, en_embed_mat, zh_embed_mat, path_feats, detail):
+def fit(name, max_epoch, embed_mat, path_feats, detail):
     tensors = tensorize(load_feat(path_feats), device)
     bound = int(len(tensors) / 2)
     train_loader, dev_loader = get_loader(tensors[:bound]), get_loader(tensors[bound:])
-    en_embed_mat, zh_embed_mat = torch.Tensor(en_embed_mat), torch.Tensor(zh_embed_mat)
+    embed_mat = torch.Tensor(embed_mat)
     arch = map_item(name, archs)
-    model = arch(en_embed_mat, zh_embed_mat, pos_mat, mask_mat, head, stack).to(device)
+    model = arch(embed_mat, pos_mat, mask_mat, head, stack).to(device)
     loss_func = CrossEntropyLoss(ignore_index=0, reduction='sum')
     learn_rate, min_rate = 1e-3, 1e-5
     min_dev_loss = float('inf')
