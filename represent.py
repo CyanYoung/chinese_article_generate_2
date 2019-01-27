@@ -4,8 +4,7 @@ import numpy as np
 
 from gensim.models.word2vec import Word2Vec
 
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+from gensim.corpora import Dictionary
 
 from util import flat_read
 
@@ -13,13 +12,14 @@ from util import flat_read
 embed_len = 200
 min_freq = 10
 max_vocab = 5000
-win_len = 10
 seq_len = 100
 
 bos, eos = '<', '>'
 
+pad_ind, oov_ind = 0, 1
+
 path_word_vec = 'feat/word_vec.pkl'
-path_word2ind = 'model/word2ind.pkl'
+path_word_ind = 'model/word_ind.pkl'
 path_embed = 'feat/embed.pkl'
 
 
@@ -42,21 +42,29 @@ def word2vec(texts, path_word_vec):
     with open(path_word_vec, 'wb') as f:
         pk.dump(word_vecs, f)
     if __name__ == '__main__':
-        words = ['，', '。', '*', '#']
+        words = ['，', '。', '<', '>']
         for word in words:
             print(word_vecs.most_similar(word))
 
 
-def embed(texts, path_word2ind, path_word_vec, path_embed):
-    model = Tokenizer(num_words=max_vocab, filters='', char_level=True)
-    model.fit_on_texts(texts)
-    word_inds = model.word_index
-    with open(path_word2ind, 'wb') as f:
-        pk.dump(model, f)
+def tran_dict(word_inds, off):
+    off_word_inds = dict()
+    for word, ind in word_inds.items():
+        off_word_inds[word] = ind + off
+    return off_word_inds
+
+
+def embed(sent_words, path_word_ind, path_word_vec, path_embed):
+    model = Dictionary(sent_words)
+    model.filter_extremes(no_below=min_freq, no_above=0.5, keep_n=max_vocab)
+    word_inds = model.token2id
+    word_inds = tran_dict(word_inds, off=2)
+    with open(path_word_ind, 'wb') as f:
+        pk.dump(word_inds, f)
     with open(path_word_vec, 'rb') as f:
         word_vecs = pk.load(f)
     vocab = word_vecs.vocab
-    vocab_num = min(max_vocab + 1, len(word_inds) + 1)
+    vocab_num = min(max_vocab + 2, len(word_inds) + 2)
     embed_mat = np.zeros((vocab_num, embed_len))
     for word, ind in word_inds.items():
         if word in vocab:
@@ -66,8 +74,21 @@ def embed(texts, path_word2ind, path_word_vec, path_embed):
         pk.dump(embed_mat, f)
 
 
+def sent2ind(words, word_inds, seq_len, keep_oov):
+    seq = list()
+    for word in words:
+        if word in word_inds:
+            seq.append(word_inds[word])
+        elif keep_oov:
+            seq.append(oov_ind)
+    if len(seq) < seq_len:
+        return seq + [pad_ind] * (seq_len - len(seq))
+    else:
+        return seq[-seq_len:]
+
+
 def align(sents, path_sent):
-    with open(path_word2ind, 'rb') as f:
+    with open(path_word_ind, 'rb') as f:
         model = pk.load(f)
     seqs = model.texts_to_sequences(sents)
     align_seqs = list()
@@ -89,7 +110,7 @@ def vectorize(paths, mode, update):
     if mode == 'train':
         if update:
             word2vec(flag_texts, path_word_vec)
-        embed(flag_texts, path_word2ind, path_word_vec, path_embed)
+        embed(flag_texts, path_word_ind, path_word_vec, path_embed)
     sents, labels = shift(flag_texts)
     align(sents, paths['sent'])
     align(labels, paths['label'])
