@@ -44,7 +44,7 @@ head, stack = 4, 2
 batch_size = 32
 
 path_embed = 'feat/embed.pkl'
-path_word_ind = 'feat/zh_word_ind.pkl'
+path_word_ind = 'feat/word_ind.pkl'
 with open(path_embed, 'rb') as f:
     embed_mat = pk.load(f)
 with open(path_word_ind, 'rb') as f:
@@ -86,17 +86,17 @@ def tensorize(feats, device):
     return tensors
 
 
-def get_loader(triples):
-    en_sents, zh_sents, labels = triples
-    triples = TensorDataset(en_sents, zh_sents, labels)
-    return DataLoader(triples, batch_size, shuffle=True)
+def get_loader(pairs):
+    sents, labels = pairs
+    pairs = TensorDataset(sents, labels)
+    return DataLoader(pairs, batch_size, shuffle=True)
 
 
-def get_metric(model, loss_func, triples):
-    en_sents, zh_sents, labels = triples
+def get_metric(model, loss_func, pairs):
+    sents, labels = pairs
     labels = labels.view(-1)
     num = (labels > 0).sum().item()
-    prods = model(en_sents, zh_sents)
+    prods = model(sents)
     prods = prods.view(-1, prods.size(-1))
     preds = torch.max(prods, dim=1)[1]
     loss = loss_func(prods, labels)
@@ -106,8 +106,8 @@ def get_metric(model, loss_func, triples):
 
 def batch_train(models, loss_func, optim, loader, detail):
     total_loss, total_acc, total_num = [0] * 3
-    for step, triples in enumerate(loader):
-        batch_loss, batch_acc, batch_num = get_metric(models, loss_func, triples)
+    for step, pairs in enumerate(loader):
+        batch_loss, batch_acc, batch_num = get_metric(models, loss_func, pairs)
         optim.zero_grad()
         batch_loss.backward()
         optim.step()
@@ -120,8 +120,8 @@ def batch_train(models, loss_func, optim, loader, detail):
 
 def batch_dev(model, loss_func, loader):
     total_loss, total_acc, total_num = [0] * 3
-    for step, triples in enumerate(loader):
-        batch_loss, batch_acc, batch_num = get_metric(model, loss_func, triples)
+    for step, pairs in enumerate(loader):
+        batch_loss, batch_acc, batch_num = get_metric(model, loss_func, pairs)
         total_loss = total_loss + batch_loss.item()
         total_acc, total_num = total_acc + batch_acc, total_num + batch_num
     return total_loss / total_num, total_acc / total_num

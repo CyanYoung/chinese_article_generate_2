@@ -37,9 +37,9 @@ class DecodeLayer(nn.Module):
     def __init__(self, embed_len, head):
         super(DecodeLayer, self).__init__()
         self.head = head
-        self.qrys = nn.Linear(embed_len, 200 * head)
-        self.keys = nn.Linear(embed_len, 200 * head)
-        self.vals = nn.Linear(embed_len, 200 * head)
+        self.qry = nn.Linear(embed_len, 200 * head)
+        self.key = nn.Linear(embed_len, 200 * head)
+        self.val = nn.Linear(embed_len, 200 * head)
         self.fuse = nn.Linear(200 * head, 200)
         self.lal = nn.Sequential(nn.Linear(200, 200),
                                  nn.ReLU(),
