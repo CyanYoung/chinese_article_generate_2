@@ -3,8 +3,10 @@ import pickle as pk
 import numpy as np
 from numpy.random import choice
 
-from keras.models import load_model
-from keras.preprocessing.sequence import pad_sequences
+import torch
+import torch.nn.functional as F
+
+from represent import sent2ind
 
 from util import map_item
 
@@ -16,14 +18,15 @@ def ind2word(word_inds):
     return ind_words
 
 
-win_len = 10
+device = torch.device('cpu')
+
 seq_len = 100
 min_len = 20
 max_len = 100
 
 bos, eos = '<', '>'
 
-path_word_ind = 'feat/word2ind.pkl'
+path_word_ind = 'feat/word_ind.pkl'
 with open(path_word_ind, 'rb') as f:
     word_inds = pk.load(f)
 
@@ -34,11 +37,9 @@ punc_inds = [word_inds[punc] for punc in puncs]
 
 ind_words = ind2word(word_inds)
 
-paths = {'cnn': 'model/cnn.h5',
-         'rnn': 'model/rnn.h5'}
+paths = {'trm': 'model/dnn_trm.pkl'}
 
-models = {'cnn': load_model(map_item('cnn', paths)),
-          'rnn': load_model(map_item('rnn', paths))}
+models = {'trm': torch.load(map_item('trm', paths), map_location=device)}
 
 
 def sample(probs, sent_len, cand):
@@ -57,17 +58,18 @@ def sample(probs, sent_len, cand):
 
 
 def predict(text, name):
-    sent = bos + text.strip()
+    text = bos + text.strip()
     model = map_item(name, models)
-    pad_len = seq_len + win_len - 1 if name == 'cnn' else seq_len
-    next_word = ''
-    while next_word != eos and len(sent) < max_len:
-        sent = sent + next_word
-        seq = word2ind.texts_to_sequences([sent])[0]
-        align_seq = pad_sequences([seq], maxlen=pad_len)
-        probs = model.predict(align_seq)[0][-1]
+    next_word, count = '', 1
+    while next_word != eos and len(text) < max_len:
+        text = text + next_word
+        pad_seq = sent2ind(text, word_inds, seq_len, keep_oov=True)
+        sent = torch.LongTensor([pad_seq]).to(device)
+        step = min(count - 1, seq_len - 1)
+        prods = model(sent)[0][step]
+        probs = F.softmax(prods, dim=0).numpy()
         next_word = sample(probs, len(sent), cand=5)
-    return sent[1:]
+    return text[1:]
 
 
 if __name__ == '__main__':
