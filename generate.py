@@ -42,13 +42,13 @@ paths = {'trm': 'model/dnn_trm.pkl'}
 models = {'trm': torch.load(map_item('trm', paths), map_location=device)}
 
 
-def sample(probs, sent_len, cand):
+def sample(probs, count, cand):
     max_probs = np.array(sorted(probs, reverse=True)[:cand])
     max_probs = max_probs / np.sum(max_probs)
     max_inds = np.argsort(-probs)[:cand]
     if max_inds[0] in punc_inds:
         next_ind = max_inds[0]
-    elif sent_len < min_len:
+    elif count < min_len:
         next_ind = eos_ind
         while next_ind == eos_ind:
             next_ind = choice(max_inds, p=max_probs)
@@ -60,20 +60,22 @@ def sample(probs, sent_len, cand):
 def predict(text, name):
     text = bos + text.strip()
     model = map_item(name, models)
-    next_word, count = '', 1
-    while next_word != eos and len(text) < max_len:
-        text = text + next_word
-        pad_seq = sent2ind(text, word_inds, seq_len, keep_oov=True)
-        sent = torch.LongTensor([pad_seq]).to(device)
-        step = min(count - 1, seq_len - 1)
-        prods = model(sent)[0][step]
-        probs = F.softmax(prods, dim=0).numpy()
-        next_word = sample(probs, len(sent), cand=5)
+    with torch.no_grad():
+        model.eval()
+        next_word, count = '', len(text) - 1
+        while next_word != eos and count < max_len:
+            text = text + next_word
+            count = count + 1
+            pad_seq = sent2ind(text, word_inds, seq_len, keep_oov=True)
+            sent = torch.LongTensor([pad_seq]).to(device)
+            step = min(count - 1, seq_len - 1)
+            prods = model(sent)[0][step]
+            probs = F.softmax(prods, dim=0).numpy()
+            next_word = sample(probs, count, cand=5)
     return text[1:]
 
 
 if __name__ == '__main__':
     while True:
         text = input('text: ')
-        print('cnn: %s' % predict(text, 'cnn'))
-        print('rnn: %s' % predict(text, 'rnn'))
+        print('trm: %s' % predict(text, 'trm'))
