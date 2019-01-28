@@ -8,7 +8,7 @@ prepare() 将 txt 数据处理为 (poet, title, text) 的三元组，保存为 c
 
 #### 2.retrieve
 
-输入作者与关键词，查找所有包含关键词的标题及正文
+输入作者与关键词，查找此作者所有包含关键词的标题及正文
 
 #### 3.explore
 
@@ -20,13 +20,11 @@ add_flag() 添加控制符，word2vec() 按字训练词向量、构造 embed_mat
 
 shift() 分别删去 bos、eos 得到 sent、label，align() 分别截取或填充为定长序列
 
-add_buf() 再对 cnn_sent 头部进行 win_len - 1 填充、对齐 label
-
 #### 5.build
 
-label 先 expand_dims、再使用 sparse_categorical_crossentropy 
+通过 dnn 的 trm 构建语言生成模型，对解码器词特征 x 进行多头线性映射
 
-避免 to_categorical() 超过内存限制， 通过 rnn、cnn 构建语言生成模型
+得到 q、k、v，使用 mask 点积注意力得到语境向量 c、再线性映射进行降维
 
 #### 6.generate
 
