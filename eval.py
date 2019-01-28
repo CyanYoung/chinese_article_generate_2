@@ -33,10 +33,10 @@ def test(name, sents, labels):
     probs = probs.numpy()
     len_sum, log_sum = [0] * 2
     for sent, label, prob in zip(sents, labels, probs):
-        bound = sum(sent == 0)
-        len_sum = len_sum + seq_len - bound
+        bound = sum(sent > 0).item()
+        len_sum = len_sum + bound
         sent_log = 0
-        for i in range(bound, seq_len):
+        for i in range(bound):
             sent_log = sent_log + np.log(prob[i][label[i]])
         log_sum = log_sum + sent_log
     print('\n%s %s %.2f' % (name, 'perp:', np.power(2, -log_sum / len_sum)))
