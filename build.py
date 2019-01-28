@@ -41,7 +41,7 @@ seq_len = 100
 
 head, stack = 4, 2
 
-batch_size = 32
+batch_size = 512
 
 path_embed = 'feat/embed.pkl'
 path_word_ind = 'feat/word_ind.pkl'
