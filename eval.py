@@ -2,12 +2,17 @@ import pickle as pk
 
 import numpy as np
 
+import torch
 import torch.nn.functional as F
+
+from build import tensorize
 
 from generate import models
 
 from util import map_item
 
+
+device = torch.device('cpu')
 
 seq_len = 100
 
@@ -20,9 +25,12 @@ with open(path_label, 'rb') as f:
 
 
 def test(name, sents, labels):
+    sents, labels = tensorize([sents, labels], device)
     model = map_item(name, models)
-    prods = model(sents)
-    probs = F.softmax(prods, dim=-1).numpy()
+    with torch.no_grad():
+        model.eval()
+        probs = F.softmax(model(sents), dim=-1)
+    probs = probs.numpy()
     len_sum, log_sum = [0] * 2
     for sent, label, prob in zip(sents, labels, probs):
         bound = sum(sent == 0)
