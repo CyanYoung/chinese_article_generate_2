@@ -44,6 +44,7 @@ class DecodeLayer(nn.Module):
         self.lal = nn.Sequential(nn.Linear(200, 200),
                                  nn.ReLU(),
                                  nn.Linear(200, 200))
+        self.lns = nn.ModuleList([nn.LayerNorm(200) for _ in range(2)])
 
     def mul_att(self, x, y, m):
         q = self.qry(y).view(y.size(0), y.size(1), self.head, -1).transpose(1, 2)
@@ -59,7 +60,7 @@ class DecodeLayer(nn.Module):
     def forward(self, y, m):
         r = y
         y = self.mul_att(y, y, m)
-        y = F.layer_norm(y + r, y.size()[1:])
+        y = self.lns[0](y + r)
         r = y
         y = self.lal(y)
-        return F.layer_norm(y + r, y.size()[1:])
+        return self.lns[1](y + r)
