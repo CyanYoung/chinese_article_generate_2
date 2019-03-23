@@ -37,7 +37,7 @@ punc_inds = [word_inds[punc] for punc in puncs]
 
 ind_words = ind2word(word_inds)
 
-paths = {'trm': 'model/dnn_trm.pkl'}
+paths = {'trm': 'model/trm.pkl'}
 
 models = {'trm': torch.load(map_item('trm', paths), map_location=device)}
 
