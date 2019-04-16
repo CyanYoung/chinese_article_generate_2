@@ -58,7 +58,7 @@ def sample(probs, count, cand):
 
 
 def predict(text, name):
-    text = bos + text.strip()
+    text = bos + text
     model = map_item(name, models)
     with torch.no_grad():
         model.eval()
