@@ -6,26 +6,35 @@ import torch.nn.functional as F
 
 
 class Trm(nn.Module):
-    def __init__(self, embed_mat, pos_mat, mask_mat, head, stack):
+    def __init__(self, embed_mat, pos_mat, att_mat, head, stack):
         super(Trm, self).__init__()
-        self.decode = TrmDecode(embed_mat, pos_mat, mask_mat, head, stack)
+        self.pos, self.att = pos_mat, att_mat
+        self.head = head
+        self.decode = TrmDecode(embed_mat, head, stack)
+
+    def get_pad(self, y):
+        seq_len = y.size(1)
+        pad = (y == 0)
+        for _ in range(2):
+            pad = torch.unsqueeze(pad, dim=1)
+        return pad.repeat(1, self.head, seq_len, 1)
 
     def forward(self, y):
-        return self.decode(y)
+        p = self.pos.repeat(y.size(0), 1, 1)
+        m = self.att.repeat(y.size(0), 1, 1, 1) | self.get_pad(y)
+        return self.decode(y, p, m)
 
 
 class TrmDecode(nn.Module):
-    def __init__(self, embed_mat, pos_mat, mask_mat, head, stack):
+    def __init__(self, embed_mat, head, stack):
         super(TrmDecode, self).__init__()
         vocab_num, embed_len = embed_mat.size()
         self.embed = nn.Embedding(vocab_num, embed_len, _weight=embed_mat)
-        self.pos, self.mask = pos_mat, mask_mat
         self.layers = nn.ModuleList([DecodeLayer(embed_len, head) for _ in range(stack)])
         self.dl = nn.Sequential(nn.Dropout(0.2),
                                 nn.Linear(200, vocab_num))
 
-    def forward(self, y):
-        p, m = self.pos.repeat(y.size(0), 1, 1), self.mask.repeat(y.size(0), 1, 1, 1)
+    def forward(self, y, p, m):
         y = self.embed(y)
         y = y + p
         for layer in self.layers:

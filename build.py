@@ -14,11 +14,11 @@ from nn_arch import Trm
 from util import map_item
 
 
-def get_mask(head, seq_len):
-    mask = torch.triu(torch.ones(seq_len, seq_len).byte(), diagonal=1)
-    mask = torch.unsqueeze(mask, dim=0)
-    mask = mask.repeat(head, 1, 1)
-    return torch.unsqueeze(mask, dim=0)
+def get_att(head, seq_len):
+    att = torch.triu(torch.ones(seq_len, seq_len).byte(), diagonal=1)
+    for _ in range(2):
+        att = torch.unsqueeze(att, dim=0)
+    return att.repeat(1, head, 1, 1)
 
 
 def get_pos(seq_len, embed_len):
@@ -50,7 +50,7 @@ with open(path_embed, 'rb') as f:
 with open(path_word_ind, 'rb') as f:
     word_inds = pk.load(f)
 
-mask_mat = get_mask(head, seq_len).to(device)
+att_mat = get_att(head, seq_len).to(device)
 pos_mat = get_pos(seq_len, embed_len).to(device)
 
 archs = {'trm': Trm}
@@ -133,7 +133,7 @@ def fit(name, max_epoch, embed_mat, path_feats, detail):
     train_loader, dev_loader = get_loader(tensors[:bound]), get_loader(tensors[bound:])
     embed_mat = torch.Tensor(embed_mat)
     arch = map_item(name, archs)
-    model = arch(embed_mat, pos_mat, mask_mat, head, stack).to(device)
+    model = arch(embed_mat, pos_mat, att_mat, head, stack).to(device)
     loss_func = CrossEntropyLoss(ignore_index=0, reduction='sum')
     learn_rate, min_rate = 1e-3, 1e-5
     min_dev_loss = float('inf')
